@@ -3,7 +3,6 @@ export { api, tokenManager, apiRequest } from "./client";
 
 export {
   auth,
-  restaurants,
   universities,
   plans,
   subscriptions,
@@ -12,8 +11,5 @@ export {
   staff,
   admin,
   studentDashboard,
-  userDashboard,
   superAdmin,
-  regions,
-  codes,
 } from "./endpoints";

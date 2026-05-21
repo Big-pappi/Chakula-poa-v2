@@ -11,7 +11,7 @@ import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbPage } from "@/co
 import { Progress } from "@/components/ui/progress";
 import { Users, UtensilsCrossed, CreditCard, TrendingUp, AlertTriangle, CheckCircle2, Clock, ArrowUpRight, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { admin } from "@/lib/api/endpoints";
+import { adminAPI } from "@/lib/api/api";
 
 interface DashboardStats {
   total_users: number;
@@ -45,21 +45,12 @@ export default function AdminDashboard() {
     setIsLoading(true);
     try {
       const [dashboardResponse, usersResponse] = await Promise.all([
-        admin.getDashboardStats(),
-        admin.getUsers({ limit: 5 }),
+        adminAPI.getDashboard(),
+        adminAPI.getUsers({ limit: 5 }),
       ]);
       
-      if (dashboardResponse.data) {
-        setStats(dashboardResponse.data as unknown as DashboardStats);
-      }
-      const usersData = usersResponse.data;
-      if (usersData) {
-        // Handle both array and paginated response
-        const usersArray = Array.isArray(usersData) 
-          ? usersData 
-          : (usersData as { results?: RecentUser[] }).results || [];
-        setRecentUsers(usersArray as unknown as RecentUser[]);
-      }
+      setStats(dashboardResponse);
+      setRecentUsers(usersResponse.results || usersResponse || []);
     } catch (err) {
       console.error("[v0] Failed to fetch dashboard data:", err);
       // Set empty state - no mock data

@@ -1,12 +1,7 @@
 // API Configuration and Utilities for Chakula Poa
 // This file provides all API utilities for communicating with the Django backend
-// NOTE: This file is kept for backwards compatibility. Prefer using endpoints.ts
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/";
-
-// Use consistent token keys with client.ts
-const TOKEN_KEY = "chakula_poa_access_token";
-const REFRESH_TOKEN_KEY = "chakula_poa_refresh_token";
 
 // Location types supported by the platform
 export type LocationType = 
@@ -186,25 +181,20 @@ export class APIError extends Error {
   }
 }
 
-// Token management - using same keys as client.ts for consistency
+// Token management
 export function getToken(): string | null {
   if (typeof window === "undefined") return null;
-  return localStorage.getItem(TOKEN_KEY);
-}
-
-export function getRefreshToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem(REFRESH_TOKEN_KEY);
+  return localStorage.getItem("access_token");
 }
 
 export function setTokens(access: string, refresh: string): void {
-  localStorage.setItem(TOKEN_KEY, access);
-  localStorage.setItem(REFRESH_TOKEN_KEY, refresh);
+  localStorage.setItem("access_token", access);
+  localStorage.setItem("refresh_token", refresh);
 }
 
 export function clearTokens(): void {
-  localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem(REFRESH_TOKEN_KEY);
+  localStorage.removeItem("access_token");
+  localStorage.removeItem("refresh_token");
 }
 
 // Base fetch function with auth
@@ -544,21 +534,18 @@ export const staffAPI = {
 
 // Admin API - with /api/ prefix
 export const adminAPI = {
-  getUsers: async (params?: { search?: string; status?: string; limit?: number }): Promise<{ results?: User[]; count?: number } | User[]> => {
+  getUsers: async (params?: { search?: string; status?: string }): Promise<User[]> => {
     const queryParams = new URLSearchParams();
     if (params?.search) queryParams.append("search", params.search);
     if (params?.status) queryParams.append("status", params.status);
-    if (params?.limit) queryParams.append("limit", String(params.limit));
     const query = queryParams.toString() ? `?${queryParams.toString()}` : "";
     const response = await fetchWithAuth(`/api/admin/users/${query}`);
     return response.json();
   },
 
   // Legacy alias
-  getStudents: async (params?: { search?: string; status?: string }): Promise<User[]> => {
-    const result = await adminAPI.getUsers(params);
-    return Array.isArray(result) ? result : result.results || [];
-  },
+  getStudents: async (params?: { search?: string; status?: string }): Promise<User[]> => 
+    adminAPI.getUsers(params),
 
   getStaff: async (): Promise<User[]> => {
     const response = await fetchWithAuth("/api/admin/staff/");
@@ -599,11 +586,6 @@ export const adminAPI = {
   getDashboardStats: async () => {
     const response = await fetchWithAuth("/api/admin/dashboard/");
     return response.json();
-  },
-
-  // Alias for getDashboardStats - used by admin dashboard page
-  getDashboard: async () => {
-    return adminAPI.getDashboardStats();
   },
 };
 

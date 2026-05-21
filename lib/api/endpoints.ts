@@ -283,11 +283,10 @@ export const admin = {
   deleteStaff: (id: string) => api.delete(`/api/admin/staff/${id}/`),
 
   // Users (formerly students)
-  getUsers: (params?: { search?: string; status?: string; limit?: number }) => {
+  getUsers: (params?: { search?: string; status?: string }) => {
     const queryParams = new URLSearchParams();
     if (params?.search) queryParams.append("search", params.search);
     if (params?.status) queryParams.append("status", params.status);
-    if (params?.limit) queryParams.append("limit", String(params.limit));
     const query = queryParams.toString() ? `?${queryParams.toString()}` : "";
     return api.get<User[]>(`/api/admin/users/${query}`);
   },
@@ -411,7 +410,7 @@ export const superAdmin = {
   getAllTransactions: (params?: { start_date?: string; end_date?: string; status?: string }) =>
     superAdmin.getTransactions(params),
 
-  // Subscription Plans management - using /api/admin/plans/ endpoint for write operations
+  // Subscription Plans management - using /api/plans/ endpoint
   getPlans: (params?: {
     tier?: string;
     billing_cycle?: string;
@@ -422,20 +421,16 @@ export const superAdmin = {
     if (params?.tier) queryParams.append("tier", params.tier);
     if (params?.billing_cycle) queryParams.append("billing_cycle", params.billing_cycle);
     if (params?.is_active !== undefined) queryParams.append("is_active", String(params.is_active));
-    // Ensure restaurant_id is a string, not an object
-    if (params?.restaurant_id && typeof params.restaurant_id === 'string') {
-      queryParams.append("restaurant_id", params.restaurant_id);
-    }
+    if (params?.restaurant_id) queryParams.append("restaurant_id", params.restaurant_id);
     const query = queryParams.toString() ? `?${queryParams.toString()}` : "";
     return api.get<SubscriptionPlan[]>(`/api/plans/${query}`);
   },
-  // Use admin endpoint for creating plans (regular /api/plans/ is read-only)
   createPlan: (data: Partial<SubscriptionPlan>) =>
-    api.post<SubscriptionPlan>("/api/admin/plans/", data as Record<string, unknown>),
+    api.post<SubscriptionPlan>("/api/plans/", data as Record<string, unknown>),
   updatePlan: (id: string, data: Partial<SubscriptionPlan>) =>
-    api.patch<SubscriptionPlan>(`/api/admin/plans/${id}/`, data as Record<string, unknown>),
+    api.patch<SubscriptionPlan>(`/api/plans/${id}/`, data as Record<string, unknown>),
   deletePlan: (id: string) =>
-    api.delete(`/api/admin/plans/${id}/`),
+    api.delete(`/api/plans/${id}/`),
 
   // System settings
   getSystemSettings: () =>

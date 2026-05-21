@@ -65,10 +65,13 @@ export default function SubscriptionsPage() {
     const fetchData = async () => {
       try {
         // Fetch plans filtered by user's restaurant if available
-        const restaurantId = user?.restaurant_id || undefined;
+        const plansParams: Record<string, string> = {};
+        if (user?.restaurant_id) {
+          plansParams.restaurant_id = user.restaurant_id;
+        }
         
         const [plansRes, subRes] = await Promise.all([
-          plans.getAll(restaurantId),
+          plans.getAll(plansParams),
           subscriptions.getCurrent(),
         ]);
         
