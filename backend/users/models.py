@@ -107,15 +107,23 @@ class User(AbstractBaseUser, PermissionsMixin):
         super().save(*args, **kwargs)
     
     def generate_cps_number(self):
-        """Generate a unique permanent CPS number (CPS#XXXX format)."""
+        """Generate a unique permanent identifier based on role.
+        - Regular users get CPS#XXXX
+        - Staff, admin, super_admin get STF#XXXX
+        """
         if not self.cps_number:
-            prefix = 'CPS#'
+            # Staff, admin, super_admin get staff identifier (STF#)
+            if self.role in ['staff', 'admin', 'super_admin']:
+                prefix = 'STF#'
+            else:
+                prefix = 'CPS#'
+            
             while True:
                 # Generate random 4-character alphanumeric code
                 code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
-                cps = f"{prefix}{code}"
-                if not User.objects.filter(cps_number=cps).exists():
-                    self.cps_number = cps
+                identifier = f"{prefix}{code}"
+                if not User.objects.filter(cps_number=identifier).exists():
+                    self.cps_number = identifier
                     break
     
     def generate_daily_code(self):

@@ -53,7 +53,7 @@ export default function AdminMealsPage() {
     setIsLoading(true);
     try {
       const response = await adminAPI.getMeals();
-      setMeals(response.results || response || []);
+      setMeals(Array.isArray(response) ? response : []);
     } catch (err: any) {
       console.error("[v0] Failed to fetch meals:", err);
       // Demo data for preview

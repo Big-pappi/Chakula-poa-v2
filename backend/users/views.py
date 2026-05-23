@@ -13,7 +13,9 @@ from .models import User
 from .serializers import (
     UserSerializer, RegisterSerializer, LoginSerializer,
     ChangePasswordSerializer, UserUpdateSerializer,
-    StaffCreateSerializer, AdminCreateSerializer, UserListSerializer
+    StaffCreateSerializer, AdminCreateSerializer, UserListSerializer,
+    AdminCustomerSerializer, AdminCustomerUpdateSerializer,
+    AdminCustomerSubscriptionSerializer
 )
 from subscriptions.models import Subscription
 from meals.models import MealOrder
@@ -527,3 +529,201 @@ class UserDashboardView(APIView):
 
 # Legacy alias for backwards compatibility
 StudentDashboardView = UserDashboardView
+
+
+# Admin Customer Management Views
+class AdminCustomerListView(generics.ListAPIView):
+    """List customers subscribed to admin's restaurant with subscription info."""
+    serializer_class = AdminCustomerSerializer
+    permission_classes = [IsAdminUser]
+    
+    def get_queryset(self):
+        user = self.request.user
+        queryset = User.objects.filter(role='user')
+        
+        # Admin can only see customers from their restaurant
+        if user.role == 'admin' and user.restaurant:
+            queryset = queryset.filter(restaurant=user.restaurant)
+        
+        # Search filter
+        search = self.request.query_params.get('search')
+        if search:
+            queryset = queryset.filter(
+                Q(full_name__icontains=search) |
+                Q(cps_number__icontains=search) |
+                Q(phone_number__icontains=search) |
+                Q(email__icontains=search)
+            )
+        
+        # Status filter (active/inactive account status)
+        status_filter = self.request.query_params.get('status')
+        if status_filter:
+            queryset = queryset.filter(is_active=(status_filter == 'active'))
+        
+        # Subscription status filter
+        subscription_status = self.request.query_params.get('subscription_status')
+        if subscription_status:
+            from subscriptions.models import Subscription
+            if subscription_status == 'active':
+                active_user_ids = Subscription.objects.filter(
+                    status='active'
+                ).values_list('user_id', flat=True)
+                queryset = queryset.filter(id__in=active_user_ids)
+            elif subscription_status == 'expired':
+                # Has subscriptions but none active
+                has_any = Subscription.objects.values_list('user_id', flat=True)
+                has_active = Subscription.objects.filter(
+                    status='active'
+                ).values_list('user_id', flat=True)
+                queryset = queryset.filter(id__in=has_any).exclude(id__in=has_active)
+            elif subscription_status == 'none':
+                # Never had a subscription
+                has_any = Subscription.objects.values_list('user_id', flat=True)
+                queryset = queryset.exclude(id__in=has_any)
+        
+        return queryset.order_by('-created_at')
+
+
+class AdminCustomerDetailView(generics.RetrieveUpdateAPIView):
+    """Retrieve and update customer details."""
+    permission_classes = [IsAdminUser]
+    
+    def get_serializer_class(self):
+        if self.request.method in ['PATCH', 'PUT']:
+            return AdminCustomerUpdateSerializer
+        return AdminCustomerSerializer
+    
+    def get_queryset(self):
+        user = self.request.user
+        queryset = User.objects.filter(role='user')
+        
+        if user.role == 'admin' and user.restaurant:
+            queryset = queryset.filter(restaurant=user.restaurant)
+        
+        return queryset
+
+
+class AdminCustomerDeactivateView(APIView):
+    """Deactivate or reactivate a customer account."""
+    permission_classes = [IsAdminUser]
+    
+    def post(self, request, pk):
+        try:
+            user = request.user
+            queryset = User.objects.filter(role='user')
+            
+            if user.role == 'admin' and user.restaurant:
+                queryset = queryset.filter(restaurant=user.restaurant)
+            
+            customer = queryset.get(pk=pk)
+            action = request.data.get('action', 'deactivate')
+            
+            if action == 'deactivate':
+                customer.is_active = False
+                message = f'Customer {customer.full_name} has been deactivated'
+            else:
+                customer.is_active = True
+                message = f'Customer {customer.full_name} has been reactivated'
+            
+            customer.save()
+            return Response({'message': message, 'is_active': customer.is_active})
+        
+        except User.DoesNotExist:
+            return Response(
+                {'detail': 'Customer not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+
+class AdminCustomerSubscriptionView(APIView):
+    """Manage customer subscription (extend/cancel)."""
+    permission_classes = [IsAdminUser]
+    
+    def get(self, request, pk):
+        """Get customer's subscription history."""
+        try:
+            user = request.user
+            queryset = User.objects.filter(role='user')
+            
+            if user.role == 'admin' and user.restaurant:
+                queryset = queryset.filter(restaurant=user.restaurant)
+            
+            customer = queryset.get(pk=pk)
+            
+            from subscriptions.models import Subscription
+            from subscriptions.serializers import SubscriptionSerializer
+            
+            subscriptions = Subscription.objects.filter(
+                user=customer
+            ).select_related('plan', 'dietary_plan').order_by('-created_at')
+            
+            return Response({
+                'customer_id': str(customer.id),
+                'customer_name': customer.full_name,
+                'subscriptions': SubscriptionSerializer(subscriptions, many=True).data
+            })
+        
+        except User.DoesNotExist:
+            return Response(
+                {'detail': 'Customer not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+    
+    def post(self, request, pk):
+        """Extend or cancel customer's subscription."""
+        try:
+            user = request.user
+            queryset = User.objects.filter(role='user')
+            
+            if user.role == 'admin' and user.restaurant:
+                queryset = queryset.filter(restaurant=user.restaurant)
+            
+            customer = queryset.get(pk=pk)
+            
+            serializer = AdminCustomerSubscriptionSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            
+            action = serializer.validated_data['action']
+            
+            from subscriptions.models import Subscription
+            from datetime import timedelta
+            
+            # Get active subscription
+            subscription = Subscription.objects.filter(
+                user=customer,
+                status='active'
+            ).first()
+            
+            if not subscription:
+                return Response(
+                    {'detail': 'Customer has no active subscription'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            if action == 'extend':
+                days = serializer.validated_data['days']
+                subscription.end_date = subscription.end_date + timedelta(days=days)
+                subscription.remaining_meals += subscription.plan.meals_per_day * days
+                subscription.save()
+                
+                return Response({
+                    'message': f'Subscription extended by {days} days',
+                    'new_end_date': subscription.end_date,
+                    'remaining_meals': subscription.remaining_meals
+                })
+            
+            elif action == 'cancel':
+                reason = serializer.validated_data.get('reason', '')
+                subscription.status = 'cancelled'
+                subscription.save()
+                
+                return Response({
+                    'message': 'Subscription cancelled',
+                    'reason': reason
+                })
+        
+        except User.DoesNotExist:
+            return Response(
+                {'detail': 'Customer not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )

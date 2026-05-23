@@ -2,6 +2,12 @@
 // This file provides all API utilities for communicating with the Django backend
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/";
+const ACCESS_TOKEN_KEYS = ["chakula_poa_access_token", "access_token"];
+const REFRESH_TOKEN_KEYS = ["chakula_poa_refresh_token", "refresh_token"];
+
+function apiUrl(endpoint: string): string {
+  return `${API_BASE_URL.replace(/\/$/, "")}${endpoint}`;
+}
 
 // Location types supported by the platform
 export type LocationType = 
@@ -54,13 +60,22 @@ export type University = Restaurant;
 
 export interface SubscriptionPlan {
   id: string;
-  restaurant_id: string;        // Changed from university_id
+  restaurant_id?: string;
+  restaurant?: string;
+  restaurant_name?: string;
   name: string;
+  tier: "student" | "normal" | "premium" | "special";
+  tier_display?: string;
+  billing_cycle: "weekly" | "monthly" | "semester";
+  billing_cycle_display?: string;
+  is_student_only: boolean;
+  features: string[];
   duration_type: "day" | "week" | "month" | "semester";
   duration_days: number;
   price: number;
   meals_per_day: number;
   is_active: boolean;
+  created_at?: string;
 }
 
 // Dietary plan for special food requirements
@@ -92,6 +107,7 @@ export interface DietaryPlan {
 export interface Subscription {
   id: string;
   user_id: string;
+  user?: User;
   plan_id: string;
   plan?: SubscriptionPlan;
   dietary_plan?: DietaryPlan;
@@ -181,26 +197,89 @@ export class APIError extends Error {
   }
 }
 
+type PaginatedResponse<T> = {
+  results: T[];
+};
+
+async function parseJson<T>(response: Response): Promise<T> {
+  const data = await response.json();
+  return data;
+}
+
+async function parseList<T>(response: Response): Promise<T[]> {
+  const data = await parseJson<T[] | PaginatedResponse<T>>(response);
+  if (Array.isArray(data)) return data;
+  if (data && typeof data === "object" && Array.isArray((data as PaginatedResponse<T>).results)) {
+    return (data as PaginatedResponse<T>).results;
+  }
+  return [];
+}
+
 // Token management
 export function getToken(): string | null {
   if (typeof window === "undefined") return null;
-  return localStorage.getItem("access_token");
+  for (const key of ACCESS_TOKEN_KEYS) {
+    const token = localStorage.getItem(key);
+    if (token) return token;
+  }
+  return null;
+}
+
+function getRefreshToken(): string | null {
+  if (typeof window === "undefined") return null;
+  for (const key of REFRESH_TOKEN_KEYS) {
+    const token = localStorage.getItem(key);
+    if (token) return token;
+  }
+  return null;
 }
 
 export function setTokens(access: string, refresh: string): void {
-  localStorage.setItem("access_token", access);
-  localStorage.setItem("refresh_token", refresh);
+  if (typeof window === "undefined") return;
+  for (const key of ACCESS_TOKEN_KEYS) localStorage.setItem(key, access);
+  for (const key of REFRESH_TOKEN_KEYS) localStorage.setItem(key, refresh);
 }
 
 export function clearTokens(): void {
-  localStorage.removeItem("access_token");
-  localStorage.removeItem("refresh_token");
+  if (typeof window === "undefined") return;
+  for (const key of ACCESS_TOKEN_KEYS) localStorage.removeItem(key);
+  for (const key of REFRESH_TOKEN_KEYS) localStorage.removeItem(key);
+}
+
+async function refreshAccessToken(): Promise<boolean> {
+  const refresh = getRefreshToken();
+  if (!refresh) return false;
+
+  try {
+    const response = await fetch(apiUrl("/api/users/token/refresh/"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh }),
+    });
+
+    if (!response.ok) {
+      clearTokens();
+      return false;
+    }
+
+    const data = await response.json();
+    if (!data.access) {
+      clearTokens();
+      return false;
+    }
+
+    setTokens(data.access, data.refresh || refresh);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 // Base fetch function with auth
 async function fetchWithAuth(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  hasRetried = false
 ): Promise<Response> {
   const token = getToken();
   const headers: HeadersInit = {
@@ -212,10 +291,18 @@ async function fetchWithAuth(
     (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+  const response = await fetch(apiUrl(endpoint), {
     ...options,
     headers,
   });
+
+  if (response.status === 401 && !hasRetried && token) {
+    const refreshed = await refreshAccessToken();
+    if (refreshed) {
+      return fetchWithAuth(endpoint, options, true);
+    }
+    clearTokens();
+  }
 
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
@@ -540,7 +627,7 @@ export const adminAPI = {
     if (params?.status) queryParams.append("status", params.status);
     const query = queryParams.toString() ? `?${queryParams.toString()}` : "";
     const response = await fetchWithAuth(`/api/admin/users/${query}`);
-    return response.json();
+    return parseList<User>(response);
   },
 
   // Legacy alias
@@ -549,7 +636,26 @@ export const adminAPI = {
 
   getStaff: async (): Promise<User[]> => {
     const response = await fetchWithAuth("/api/admin/staff/");
+    return parseList<User>(response);
+  },
+
+  getMeals: async (date?: string): Promise<any[]> => {
+    const params = date ? `?date=${date}` : "";
+    const response = await fetchWithAuth(`/api/admin/meals/${params}`);
+    return parseList<any>(response);
+  },
+
+  createMeal: async (data: Record<string, unknown>): Promise<any> => {
+    const response = await fetchWithAuth("/api/admin/meals/", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
     return response.json();
+  },
+
+  getSubscriptions: async (): Promise<Subscription[]> => {
+    const response = await fetchWithAuth("/api/subscriptions/admin/list/");
+    return parseList<Subscription>(response);
   },
 
   createStaff: async (data: Partial<User>): Promise<User> => {
@@ -571,7 +677,7 @@ export const adminAPI = {
   getDemandReport: async (date?: string): Promise<DemandReport[]> => {
     const params = date ? `?date=${date}` : "";
     const response = await fetchWithAuth(`/api/admin/reports/demand/${params}`);
-    return response.json();
+    return parseList<DemandReport>(response);
   },
 
   getRevenueReport: async (params?: { start_date?: string; end_date?: string }): Promise<RevenueReport> => {
@@ -586,6 +692,90 @@ export const adminAPI = {
   getDashboardStats: async () => {
     const response = await fetchWithAuth("/api/admin/dashboard/");
     return response.json();
+  },
+
+  // Customer Management (for admin/restaurant owners)
+  getCustomers: async (params?: { 
+    search?: string; 
+    status?: string; 
+    subscription_status?: string;
+  }): Promise<any[]> => {
+    const queryParams = new URLSearchParams();
+    if (params?.search) queryParams.append("search", params.search);
+    if (params?.status) queryParams.append("status", params.status);
+    if (params?.subscription_status) queryParams.append("subscription_status", params.subscription_status);
+    const query = queryParams.toString() ? `?${queryParams.toString()}` : "";
+    const response = await fetchWithAuth(`/api/admin/customers/${query}`);
+    return parseList<User>(response);
+  },
+
+  getCustomer: async (id: string) => {
+    const response = await fetchWithAuth(`/api/admin/customers/${id}/`);
+    return response.json();
+  },
+
+  updateCustomer: async (id: string, data: Partial<User>) => {
+    const response = await fetchWithAuth(`/api/admin/customers/${id}/`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+    return response.json();
+  },
+
+  toggleCustomerStatus: async (id: string, action: "activate" | "deactivate") => {
+    const response = await fetchWithAuth(`/api/admin/customers/${id}/deactivate/`, {
+      method: "POST",
+      body: JSON.stringify({ action }),
+    });
+    return response.json();
+  },
+
+  getCustomerSubscriptions: async (customerId: string) => {
+    const response = await fetchWithAuth(`/api/admin/customers/${customerId}/subscription/`);
+    return response.json();
+  },
+
+  manageCustomerSubscription: async (customerId: string, data: {
+    action: "extend" | "cancel";
+    days?: number;
+    reason?: string;
+  }) => {
+    const response = await fetchWithAuth(`/api/admin/customers/${customerId}/subscription/`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    return response.json();
+  },
+
+  // Plans Management (for admin/restaurant owners)
+  getPlans: async (): Promise<SubscriptionPlan[]> => {
+    const response = await fetchWithAuth("/api/admin/plans/");
+    return parseList<SubscriptionPlan>(response);
+  },
+
+  getPlan: async (id: string) => {
+    const response = await fetchWithAuth(`/api/admin/plans/${id}/`);
+    return response.json();
+  },
+
+  createPlan: async (data: Partial<SubscriptionPlan>) => {
+    const response = await fetchWithAuth("/api/admin/plans/", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    return response.json();
+  },
+
+  updatePlan: async (id: string, data: Partial<SubscriptionPlan>) => {
+    const response = await fetchWithAuth(`/api/admin/plans/${id}/`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+    return response.json();
+  },
+
+  deletePlan: async (id: string) => {
+    await fetchWithAuth(`/api/admin/plans/${id}/`, { method: "DELETE" });
   },
 };
 
@@ -603,7 +793,7 @@ export const superAdminAPI = {
     if (params?.region) queryParams.append("region", params.region);
     const query = queryParams.toString() ? `?${queryParams.toString()}` : "";
     const response = await fetchWithAuth(`/api/admin/all-users/${query}`);
-    return response.json();
+    return parseList<User>(response);
   },
 
   // Restaurant/Location management - using correct /api/ prefix
@@ -613,7 +803,7 @@ export const superAdminAPI = {
     if (params?.location_type) queryParams.append("location_type", params.location_type);
     const query = queryParams.toString() ? `?${queryParams.toString()}` : "";
     const response = await fetchWithAuth(`/api/admin/restaurants/${query}`);
-    return response.json();
+    return parseList<Restaurant>(response);
   },
 
   createRestaurant: async (data: Partial<Restaurant>): Promise<Restaurant> => {
@@ -680,9 +870,7 @@ export const superAdminAPI = {
     if (params?.status) queryParams.append("status", params.status);
     const query = queryParams.toString() ? `?${queryParams.toString()}` : "";
     const response = await fetchWithAuth(`/api/admin/transactions/${query}`);
-    const data = await response.json();
-    // Handle paginated response
-    return data.results || data || [];
+    return parseList<Transaction>(response);
   },
 
   getSystemConfig: async () => {

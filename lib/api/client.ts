@@ -21,6 +21,8 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 // Token management
 const TOKEN_KEY = "chakula_poa_access_token";
 const REFRESH_TOKEN_KEY = "chakula_poa_refresh_token";
+const LEGACY_TOKEN_KEY = "access_token";
+const LEGACY_REFRESH_TOKEN_KEY = "refresh_token";
 
 export const tokenManager = {
   getAccessToken: (): string | null => {
@@ -37,12 +39,16 @@ export const tokenManager = {
     if (typeof window === "undefined") return;
     localStorage.setItem(TOKEN_KEY, accessToken);
     localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+    localStorage.setItem(LEGACY_TOKEN_KEY, accessToken);
+    localStorage.setItem(LEGACY_REFRESH_TOKEN_KEY, refreshToken);
   },
 
   clearTokens: (): void => {
     if (typeof window === "undefined") return;
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(REFRESH_TOKEN_KEY);
+    localStorage.removeItem(LEGACY_TOKEN_KEY);
+    localStorage.removeItem(LEGACY_REFRESH_TOKEN_KEY);
   },
 };
 

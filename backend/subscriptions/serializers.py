@@ -19,14 +19,18 @@ class DietaryPlanSerializer(serializers.ModelSerializer):
 
 
 class SubscriptionPlanSerializer(serializers.ModelSerializer):
-    """Subscription plan serializer."""
+    """Subscription plan serializer with full plan details."""
     restaurant_name = serializers.CharField(source='restaurant.name', read_only=True)
+    tier_display = serializers.CharField(source='get_tier_display', read_only=True)
+    billing_cycle_display = serializers.CharField(source='get_billing_cycle_display', read_only=True)
     
     class Meta:
         model = SubscriptionPlan
         fields = [
-            'id', 'restaurant', 'restaurant_name', 'name', 'duration_type',
-            'duration_days', 'price', 'meals_per_day', 'is_active', 'created_at'
+            'id', 'restaurant', 'restaurant_name', 'name', 
+            'tier', 'tier_display', 'billing_cycle', 'billing_cycle_display',
+            'is_student_only', 'features', 'duration_type', 'duration_days', 
+            'price', 'meals_per_day', 'is_active', 'created_at'
         ]
         read_only_fields = ['id', 'created_at']
 

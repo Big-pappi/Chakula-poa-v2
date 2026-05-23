@@ -179,3 +179,91 @@ class UserListSerializer(serializers.ModelSerializer):
             'phone_number', 'email', 'restaurant', 'restaurant_name', 
             'location_type', 'region', 'role', 'is_active', 'created_at'
         ]
+
+
+class AdminCustomerSerializer(serializers.ModelSerializer):
+    """Serializer for customer management with subscription details."""
+    restaurant_name = serializers.CharField(read_only=True)
+    location_type = serializers.CharField(read_only=True)
+    active_subscription = serializers.SerializerMethodField()
+    subscription_status = serializers.SerializerMethodField()
+    total_subscriptions = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = User
+        fields = [
+            'id', 'cps_number', 'full_name', 'first_name', 'last_name',
+            'phone_number', 'email', 'registration_number', 'restaurant', 
+            'restaurant_name', 'location_type', 'region', 'role', 'is_active',
+            'active_subscription', 'subscription_status', 'total_subscriptions',
+            'created_at'
+        ]
+        read_only_fields = ['id', 'cps_number', 'created_at']
+    
+    def get_active_subscription(self, obj):
+        from subscriptions.models import Subscription
+        subscription = Subscription.objects.filter(
+            user=obj,
+            status='active'
+        ).select_related('plan', 'dietary_plan').first()
+        
+        if subscription:
+            return {
+                'id': str(subscription.id),
+                'plan_name': subscription.plan.name,
+                'plan_id': str(subscription.plan.id),
+                'start_date': subscription.start_date,
+                'end_date': subscription.end_date,
+                'days_left': subscription.days_left,
+                'remaining_meals': subscription.remaining_meals,
+                'dietary_plan': subscription.dietary_plan.name if subscription.dietary_plan else None,
+            }
+        return None
+    
+    def get_subscription_status(self, obj):
+        from subscriptions.models import Subscription
+        subscription = Subscription.objects.filter(
+            user=obj,
+            status='active'
+        ).first()
+        
+        if subscription:
+            return 'active'
+        
+        # Check for expired subscription
+        expired = Subscription.objects.filter(
+            user=obj,
+            status='expired'
+        ).exists()
+        
+        if expired:
+            return 'expired'
+        
+        return 'none'
+    
+    def get_total_subscriptions(self, obj):
+        from subscriptions.models import Subscription
+        return Subscription.objects.filter(user=obj).count()
+
+
+class AdminCustomerUpdateSerializer(serializers.ModelSerializer):
+    """Serializer for updating customer info by admin."""
+    
+    class Meta:
+        model = User
+        fields = ['full_name', 'first_name', 'last_name', 'email', 
+                  'registration_number', 'region', 'is_active']
+
+
+class AdminCustomerSubscriptionSerializer(serializers.Serializer):
+    """Serializer for managing customer subscriptions."""
+    action = serializers.ChoiceField(choices=['extend', 'cancel'])
+    days = serializers.IntegerField(required=False, min_value=1)
+    reason = serializers.CharField(required=False, allow_blank=True)
+    
+    def validate(self, data):
+        if data['action'] == 'extend' and not data.get('days'):
+            raise serializers.ValidationError({
+                'days': 'Days is required for extending subscription.'
+            })
+        return data

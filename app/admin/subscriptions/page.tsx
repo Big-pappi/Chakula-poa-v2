@@ -33,7 +33,7 @@ export default function AdminSubscriptionsPage() {
     setIsLoading(true);
     try {
       const response = await adminAPI.getSubscriptions();
-      const subs = response.results || response || [];
+      const subs = Array.isArray(response) ? response : [];
       setSubscriptions(subs);
       
       // Calculate stats

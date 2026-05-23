@@ -29,7 +29,7 @@ export default function AdminReportsPage() {
   const fetchReportData = async () => {
     setIsLoading(true);
     try {
-      const response = await adminAPI.getDashboard();
+      const response = await adminAPI.getDashboardStats();
       setStats({
         revenue_today: response.revenue_today || 2400000,
         meals_served: response.meals_served_today || 856,
