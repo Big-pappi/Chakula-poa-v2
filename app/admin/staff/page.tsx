@@ -79,6 +79,7 @@ export default function AdminStaffPage() {
         email: formData.email || undefined,
         phone_number: formData.phone_number,
         password: formData.password,
+        role: "staff",
       } as any);
 
       setSuccess("Staff member created successfully. Login credentials have been generated.");
@@ -118,13 +119,13 @@ export default function AdminStaffPage() {
       </header>
 
       <main className="flex-1 space-y-6 p-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-              <UserCog className="h-8 w-8" />
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
+              <UserCog className="h-6 w-6 sm:h-8 sm:w-8" />
               Staff Management
             </h1>
-            <p className="text-muted-foreground">Manage canteen staff members who serve customers</p>
+            <p className="text-sm sm:text-base text-muted-foreground">Manage canteen staff members who serve customers</p>
           </div>
           <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
             <DialogTrigger asChild>
@@ -215,14 +216,14 @@ export default function AdminStaffPage() {
 
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <CardTitle>Staff Members</CardTitle>
                 <CardDescription>
                   {isLoading ? "Loading..." : `Total ${filteredStaff.length} staff members`}
                 </CardDescription>
               </div>
-              <div className="relative w-[300px]">
+              <div className="relative w-full sm:w-[300px]">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   placeholder="Search staff..."
@@ -248,52 +249,23 @@ export default function AdminStaffPage() {
                 </Button>
               </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Staff Member</TableHead>
-                    <TableHead>Contact</TableHead>
-                    <TableHead>CPS Number</TableHead>
-                    <TableHead>Joined</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+              <>
+                {/* Mobile Card View */}
+                <div className="space-y-4 md:hidden">
                   {filteredStaff.map((staff) => (
-                    <TableRow key={staff.id}>
-                      <TableCell>
+                    <Card key={staff.id} className="p-4">
+                      <div className="flex items-start justify-between">
                         <div className="flex items-center gap-3">
                           <Avatar>
                             <AvatarFallback className="bg-primary/10 text-primary">
                               {staff.full_name?.split(" ").map((n) => n[0]).join("") || "S"}
                             </AvatarFallback>
                           </Avatar>
-                          <span className="font-medium">{staff.full_name}</span>
+                          <div>
+                            <p className="font-medium">{staff.full_name}</p>
+                            <p className="text-sm text-muted-foreground">{staff.phone_number}</p>
+                          </div>
                         </div>
-                      </TableCell>
-                      <TableCell>
-                        <div>
-                          <p className="text-sm">{staff.phone_number}</p>
-                          {staff.email && (
-                            <p className="text-xs text-muted-foreground">{staff.email}</p>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <code className="text-sm bg-muted px-2 py-1 rounded">{staff.cps_number}</code>
-                      </TableCell>
-                      <TableCell>
-                        {staff.created_at 
-                          ? new Date(staff.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
-                          : "-"}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={staff.is_active ? "default" : "secondary"}>
-                          {staff.is_active ? "Active" : "Inactive"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon">
@@ -319,11 +291,102 @@ export default function AdminStaffPage() {
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
+                      </div>
+                      <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+                        <code className="bg-muted px-2 py-1 rounded text-xs">{staff.cps_number}</code>
+                        <Badge variant={staff.is_active ? "default" : "secondary"} className="text-xs">
+                          {staff.is_active ? "Active" : "Inactive"}
+                        </Badge>
+                        {staff.created_at && (
+                          <span className="text-muted-foreground text-xs">
+                            Joined {new Date(staff.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                          </span>
+                        )}
+                      </div>
+                    </Card>
                   ))}
-                </TableBody>
-              </Table>
+                </div>
+
+                {/* Desktop Table View */}
+                <div className="hidden md:block">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Staff Member</TableHead>
+                        <TableHead>Contact</TableHead>
+                        <TableHead>CPS Number</TableHead>
+                        <TableHead>Joined</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredStaff.map((staff) => (
+                        <TableRow key={staff.id}>
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              <Avatar>
+                                <AvatarFallback className="bg-primary/10 text-primary">
+                                  {staff.full_name?.split(" ").map((n) => n[0]).join("") || "S"}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span className="font-medium">{staff.full_name}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div>
+                              <p className="text-sm">{staff.phone_number}</p>
+                              {staff.email && (
+                                <p className="text-xs text-muted-foreground">{staff.email}</p>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <code className="text-sm bg-muted px-2 py-1 rounded">{staff.cps_number}</code>
+                          </TableCell>
+                          <TableCell>
+                            {staff.created_at 
+                              ? new Date(staff.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
+                              : "-"}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={staff.is_active ? "default" : "secondary"}>
+                              {staff.is_active ? "Active" : "Inactive"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem>
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  View Details
+                                </DropdownMenuItem>
+                                <DropdownMenuItem>
+                                  <Edit className="mr-2 h-4 w-4" />
+                                  Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuItem>
+                                  <Shield className="mr-2 h-4 w-4" />
+                                  Reset Password
+                                </DropdownMenuItem>
+                                <DropdownMenuItem className="text-destructive">
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Deactivate
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </>
             )}
           </CardContent>
         </Card>

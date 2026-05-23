@@ -45,6 +45,7 @@ import {
 import { Plus, Pencil, Trash2, Loader2, Package, GraduationCap, Users, Crown, Star, X } from "lucide-react";
 import { adminAPI } from "@/lib/api/api";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/lib/context/auth-context";
 
 interface SubscriptionPlan {
   id: string;
@@ -94,6 +95,7 @@ const tierColors = {
 
 export default function PackagesPage() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -164,7 +166,12 @@ export default function PackagesPage() {
           description: "Plan updated successfully",
         });
       } else {
-        await adminAPI.createPlan(formData);
+        // Include restaurant_id from the current user when creating
+        const planData = {
+          ...formData,
+          restaurant_id: user?.restaurant_id,
+        };
+        await adminAPI.createPlan(planData);
         toast({
           title: "Success",
           description: "Plan created successfully",

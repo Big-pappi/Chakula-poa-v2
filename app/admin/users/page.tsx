@@ -16,6 +16,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Users, Search, Plus, MoreHorizontal, Eye, Edit, Trash2, Download, Loader2, AlertTriangle, RefreshCw, Phone } from "lucide-react";
 import Link from "next/link";
 import { adminAPI } from "@/lib/api/api";
+import { useAuth } from "@/lib/context/auth-context";
 import type { User } from "@/lib/api/api";
 
 interface UserWithSubscription extends User {
@@ -26,8 +27,10 @@ interface UserWithSubscription extends User {
 }
 
 export default function AdminUsersPage() {
+  const { user: currentUser } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [isExporting, setIsExporting] = useState(false);
   
   const [users, setUsers] = useState<UserWithSubscription[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -110,6 +113,33 @@ export default function AdminUsersPage() {
     expired: users.filter(u => getSubscriptionStatus(u) === "expired" || getSubscriptionStatus(u) === "none").length,
   };
 
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      // Generate CSV content
+      let csvContent = "Name,CPS Number,Phone,Email,Plan,Status,Days Left,Meals Left\n";
+      filteredUsers.forEach(user => {
+        const status = getSubscriptionStatus(user);
+        csvContent += `"${user.full_name || ""}","${user.cps_number || ""}","${user.phone_number || ""}","${user.email || ""}","${user.plan_name || "None"}","${status}","${user.days_left || 0}","${user.meals_left || 0}"\n`;
+      });
+      
+      // Download the file
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      link.setAttribute("href", url);
+      link.setAttribute("download", `users-export-${new Date().toISOString().split("T")[0]}.csv`);
+      link.style.visibility = "hidden";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      console.error("[v0] Export failed:", err);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <>
       <header className="flex h-16 shrink-0 items-center gap-2 border-b bg-background px-4">
@@ -141,9 +171,13 @@ export default function AdminUsersPage() {
             <Button variant="outline" size="icon" onClick={fetchUsers} disabled={isLoading}>
               <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
             </Button>
-            <Button variant="outline" className="bg-transparent">
-              <Download className="mr-2 h-4 w-4" />
-              Export
+            <Button variant="outline" className="bg-transparent" onClick={handleExport} disabled={isExporting || filteredUsers.length === 0}>
+              {isExporting ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="mr-2 h-4 w-4" />
+              )}
+              Export CSV
             </Button>
           </div>
         </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/context/auth-context";
 import { auth } from "@/lib/api";
 import {
@@ -55,6 +55,38 @@ export default function SettingsPage() {
     subscription_alerts: true,
     promotional: false,
   });
+  const [savingNotifications, setSavingNotifications] = useState(false);
+  const [notificationsSaved, setNotificationsSaved] = useState(false);
+
+  // Load saved notification preferences
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const savedPrefs = localStorage.getItem(`notifications_${user?.id}`);
+      if (savedPrefs) {
+        try {
+          setNotifications(JSON.parse(savedPrefs));
+        } catch (e) {
+          // Use defaults
+        }
+      }
+    }
+  }, [user?.id]);
+
+  const handleSaveNotifications = async () => {
+    setSavingNotifications(true);
+    try {
+      // Save to localStorage (in production, this would be an API call)
+      if (typeof window !== "undefined" && user?.id) {
+        localStorage.setItem(`notifications_${user.id}`, JSON.stringify(notifications));
+      }
+      setNotificationsSaved(true);
+      setTimeout(() => setNotificationsSaved(false), 3000);
+    } catch (err) {
+      console.error("[v0] Failed to save notifications:", err);
+    } finally {
+      setSavingNotifications(false);
+    }
+  };
 
   const handleChangePassword = async () => {
     setError("");
@@ -194,6 +226,28 @@ export default function SettingsPage() {
                   setNotifications({ ...notifications, promotional: checked })
                 }
               />
+            </div>
+            
+            <div className="pt-4 border-t">
+              <div className="flex items-center justify-between gap-4">
+                {notificationsSaved && (
+                  <div className="flex items-center gap-2 text-sm text-green-600">
+                    <CheckCircle2 className="h-4 w-4" />
+                    <span>Preferences saved</span>
+                  </div>
+                )}
+                {!notificationsSaved && <div />}
+                <Button onClick={handleSaveNotifications} disabled={savingNotifications}>
+                  {savingNotifications ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    "Save Preferences"
+                  )}
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
