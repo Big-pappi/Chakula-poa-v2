@@ -16,6 +16,13 @@ interface DashboardStats {
   active_subscriptions: number;
   todays_orders: number;
   revenue_this_month: number;
+  expiring_subscriptions?: number;
+  new_staff_pending?: number;
+  meals_served_today?: {
+    breakfast: { served: number; capacity: number };
+    lunch: { served: number; capacity: number };
+    dinner: { served: number; capacity: number };
+  };
 }
 
 interface RecentUser {
@@ -228,20 +235,35 @@ export default function AdminDashboard() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {[
-                    { meal: "Breakfast", served: 45, capacity: 100, percentage: 45 },
-                    { meal: "Lunch", served: 0, capacity: 150, percentage: 0 },
-                    { meal: "Dinner", served: 0, capacity: 120, percentage: 0 },
-                  ].map((meal) => (
-                    <div key={meal.meal} className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>{meal.meal}</span>
-                        <span className="text-muted-foreground">
-                          {meal.served}/{meal.capacity}
-                        </span>
+                    { 
+                      meal: "Breakfast", 
+                      served: stats?.meals_served_today?.breakfast?.served ?? 0, 
+                      capacity: stats?.meals_served_today?.breakfast?.capacity ?? 100 
+                    },
+                    { 
+                      meal: "Lunch", 
+                      served: stats?.meals_served_today?.lunch?.served ?? 0, 
+                      capacity: stats?.meals_served_today?.lunch?.capacity ?? 150 
+                    },
+                    { 
+                      meal: "Dinner", 
+                      served: stats?.meals_served_today?.dinner?.served ?? 0, 
+                      capacity: stats?.meals_served_today?.dinner?.capacity ?? 120 
+                    },
+                  ].map((meal) => {
+                    const percentage = meal.capacity > 0 ? Math.round((meal.served / meal.capacity) * 100) : 0;
+                    return (
+                      <div key={meal.meal} className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span>{meal.meal}</span>
+                          <span className="text-muted-foreground">
+                            {meal.served}/{meal.capacity}
+                          </span>
+                        </div>
+                        <Progress value={percentage} />
                       </div>
-                      <Progress value={meal.percentage} />
-                    </div>
-                  ))}
+                    );
+                  })}
                 </CardContent>
               </Card>
 
@@ -251,9 +273,13 @@ export default function AdminDashboard() {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {[
-                    { type: "warning", message: "5 subscriptions expiring this week", time: "Now" },
-                    { type: "info", message: "New staff member pending approval", time: "2h ago" },
-                    { type: "success", message: "Monthly report generated", time: "Yesterday" },
+                    ...(stats?.expiring_subscriptions && stats.expiring_subscriptions > 0 
+                      ? [{ type: "warning", message: `${stats.expiring_subscriptions} subscription${stats.expiring_subscriptions > 1 ? 's' : ''} expiring this week`, time: "Now" }] 
+                      : []),
+                    ...(stats?.new_staff_pending && stats.new_staff_pending > 0 
+                      ? [{ type: "info", message: `${stats.new_staff_pending} new staff member${stats.new_staff_pending > 1 ? 's' : ''} pending approval`, time: "Recent" }] 
+                      : []),
+                    { type: "success", message: "Dashboard synced with live data", time: "Just now" },
                   ].map((alert, i) => (
                     <div key={i} className="flex items-start gap-3 rounded-lg border p-3">
                       {alert.type === "warning" && <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0" />}
@@ -265,6 +291,9 @@ export default function AdminDashboard() {
                       </div>
                     </div>
                   ))}
+                  {!(stats?.expiring_subscriptions || stats?.new_staff_pending) && (
+                    <p className="text-sm text-muted-foreground text-center py-2">No urgent alerts</p>
+                  )}
                 </CardContent>
               </Card>
             </div>

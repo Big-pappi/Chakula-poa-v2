@@ -274,13 +274,8 @@ export default function SuperAdminPlansPage() {
         await superAdmin.createPlan(planData);
       }
 
-      // Optimistic update
-      const newPlan: SubscriptionPlan = {
-        id: Date.now().toString(),
-        ...planData,
-        created_at: new Date().toISOString(),
-      };
-      setPlans((prev) => [...prev, newPlan]);
+      // Re-fetch data instead of optimistic update to ensure persistence
+      await fetchData();
 
       setIsCreateDialogOpen(false);
       setFormData(defaultPlanData);
@@ -309,14 +304,8 @@ export default function SuperAdminPlansPage() {
         await superAdmin.updatePlan(selectedPlan.id, planData);
       }
 
-      // Optimistic update
-      setPlans((prev) =>
-        prev.map((p) =>
-          p.id === selectedPlan.id
-            ? { ...p, ...planData }
-            : p
-        )
-      );
+      // Re-fetch data instead of optimistic update to ensure persistence
+      await fetchData();
 
       setIsEditDialogOpen(false);
       setSelectedPlan(null);
@@ -337,8 +326,8 @@ export default function SuperAdminPlansPage() {
         await superAdmin.deletePlan(selectedPlan.id);
       }
 
-      // Optimistic update
-      setPlans((prev) => prev.filter((p) => p.id !== selectedPlan.id));
+      // Re-fetch data instead of optimistic update to ensure persistence
+      await fetchData();
 
       setIsDeleteDialogOpen(false);
       setSelectedPlan(null);
@@ -356,12 +345,8 @@ export default function SuperAdminPlansPage() {
         await superAdmin.updatePlan(plan.id, { is_active: !plan.is_active });
       }
 
-      // Optimistic update
-      setPlans((prev) =>
-        prev.map((p) =>
-          p.id === plan.id ? { ...p, is_active: !p.is_active } : p
-        )
-      );
+      // Re-fetch data to ensure persistence
+      await fetchData();
     } catch (err) {
       setError("Failed to update plan status");
     }
@@ -595,6 +580,7 @@ export default function SuperAdminPlansPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Plan Name</TableHead>
+                  <TableHead>Restaurant</TableHead>
                   <TableHead>Tier</TableHead>
                   <TableHead>Billing Cycle</TableHead>
                   <TableHead>Price</TableHead>
@@ -607,7 +593,7 @@ export default function SuperAdminPlansPage() {
               <TableBody>
                 {filteredPlans.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8">
+                    <TableCell colSpan={9} className="text-center py-8">
                       <Package className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
                       <p className="text-muted-foreground">No plans found</p>
                     </TableCell>
@@ -615,6 +601,7 @@ export default function SuperAdminPlansPage() {
                 ) : (
                   filteredPlans.map((plan) => {
                     const TierIcon = TIER_ICONS[plan.tier as PlanTier] || Star;
+                    const restaurant = restaurants.find(r => r.id === plan.restaurant_id);
                     return (
                       <TableRow key={plan.id}>
                         <TableCell>
@@ -627,6 +614,20 @@ export default function SuperAdminPlansPage() {
                               </Badge>
                             )}
                           </div>
+                        </TableCell>
+                        <TableCell>
+                          {restaurant ? (
+                            <div className="text-sm">
+                              <p className="font-medium">{restaurant.name}</p>
+                              <p className="text-muted-foreground text-xs">
+                                {restaurant.region || restaurant.area || "N/A"}
+                              </p>
+                            </div>
+                          ) : (
+                            <Badge variant="outline" className="text-xs">
+                              All Restaurants
+                            </Badge>
+                          )}
                         </TableCell>
                         <TableCell>
                           <Badge
