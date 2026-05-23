@@ -1,1 +1,0 @@
-# Chakula Poa Django Project
