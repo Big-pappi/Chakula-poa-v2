@@ -43,18 +43,15 @@ export function Header() {
       <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2">
-          <Image
-            src="/logo.png"
-            alt="Chakula Poa"
-            width={40}
-            height={40}
-            className="rounded-lg"
-            style={{ width: 40, height: 40 }}
-          />
-            <span className="text-lg font-bold text-foreground">
-              Chakula <span className="text-primary">Poa</span>
-            </span>
+          <Link href="/" className="flex items-center" aria-label="Chakula Poa home">
+            <Image
+              src="/logo.png"
+              alt="Chakula Poa"
+              width={48}
+              height={48}
+              priority
+              className="h-11 w-11 rounded-lg object-contain"
+            />
           </Link>
 
           {/* Desktop Navigation */}
@@ -116,20 +113,17 @@ export function Header() {
         <div className="flex h-16 items-center justify-between border-b border-border px-5">
           <Link
             href="/"
-            className="flex items-center gap-2"
+            className="flex items-center"
             onClick={() => setIsOpen(false)}
+            aria-label="Chakula Poa home"
           >
             <Image
               src="/logo.png"
               alt="Chakula Poa"
-              width={36}
-              height={36}
-              className="rounded-lg"
-              style={{ width: 36, height: 36 }}
+              width={44}
+              height={44}
+              className="h-10 w-10 rounded-lg object-contain"
             />
-            <span className="text-base font-bold text-foreground">
-              Chakula <span className="text-primary">Poa</span>
-            </span>
           </Link>
           <Button
             variant="ghost"

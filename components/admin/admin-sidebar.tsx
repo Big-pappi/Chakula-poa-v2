@@ -74,17 +74,11 @@ function AdminNavContent({ onNavigate }: { onNavigate?: () => void }) {
         <Image
           src="/logo.png"
           alt="Chakula Poa"
-          width={48}
-          height={48}
-          className="rounded-xl"
-          style={{ width: 48, height: 48 }}
+          width={52}
+          height={52}
+          className="h-12 w-12 rounded-xl object-contain"
         />
-        <div>
-          <span className="text-xl font-bold text-foreground">
-            Chakula <span className="text-primary">Poa</span>
-          </span>
-          <p className="text-xs text-muted-foreground">Admin Portal</p>
-        </div>
+        <p className="text-xs font-medium text-muted-foreground">Admin Portal</p>
       </div>
 
       {/* User Info */}
@@ -181,17 +175,12 @@ export function AdminSidebar() {
           <Image
             src="/logo.png"
             alt="Chakula Poa"
-            width={36}
-            height={36}
-            className="rounded-lg"
-            style={{ width: 36, height: 36 }}
+            width={44}
+            height={44}
+            priority
+            className="h-10 w-10 rounded-lg object-contain"
           />
-          <div>
-            <span className="font-bold text-foreground">
-              Chakula <span className="text-primary">Poa</span>
-            </span>
-            <span className="ml-2 text-xs text-muted-foreground">Admin</span>
-          </div>
+          <span className="text-xs font-medium text-muted-foreground">Admin</span>
         </div>
         <Sheet open={openMobile} onOpenChange={setOpenMobile}>
           <SheetTrigger asChild>

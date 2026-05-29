@@ -3,6 +3,7 @@ Serializers for Subscription models.
 """
 from rest_framework import serializers
 from .models import SubscriptionPlan, Subscription, DietaryPlan
+from restaurants.models import Restaurant
 
 
 class DietaryPlanSerializer(serializers.ModelSerializer):
@@ -23,16 +24,27 @@ class SubscriptionPlanSerializer(serializers.ModelSerializer):
     restaurant_name = serializers.CharField(source='restaurant.name', read_only=True)
     tier_display = serializers.CharField(source='get_tier_display', read_only=True)
     billing_cycle_display = serializers.CharField(source='get_billing_cycle_display', read_only=True)
+    # Accept restaurant_id from the frontend (admin / super admin forms send this)
+    restaurant_id = serializers.PrimaryKeyRelatedField(
+        source='restaurant',
+        queryset=Restaurant.objects.all(),
+        write_only=True,
+        required=False,
+        allow_null=True,
+    )
     
     class Meta:
         model = SubscriptionPlan
         fields = [
-            'id', 'restaurant', 'restaurant_name', 'name', 
+            'id', 'restaurant', 'restaurant_id', 'restaurant_name', 'name', 
             'tier', 'tier_display', 'billing_cycle', 'billing_cycle_display',
             'is_student_only', 'features', 'duration_type', 'duration_days', 
             'price', 'meals_per_day', 'is_active', 'created_at'
         ]
         read_only_fields = ['id', 'created_at']
+        extra_kwargs = {
+            'restaurant': {'required': False, 'allow_null': True},
+        }
 
 
 class SubscriptionSerializer(serializers.ModelSerializer):
