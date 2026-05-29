@@ -70,15 +70,14 @@ function AdminNavContent({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <div className="flex h-full flex-col">
       {/* Logo */}
-      <div className="flex items-center gap-3 px-4 py-6 border-b border-border/50">
+      <div className="flex items-center justify-center px-4 py-6 border-b border-border/50">
         <Image
           src="/logo.png"
           alt="Chakula Poa"
-          width={52}
-          height={52}
-          className="h-12 w-12 rounded-xl object-contain"
+          width={64}
+          height={64}
+          className="h-16 w-16 rounded-xl object-contain"
         />
-        <p className="text-xs font-medium text-muted-foreground">Admin Portal</p>
       </div>
 
       {/* User Info */}
@@ -171,16 +170,15 @@ export function AdminSidebar() {
     <>
       {/* Mobile Header */}
       <div className="fixed top-0 left-0 right-0 z-40 flex items-center justify-between bg-background/95 backdrop-blur-sm border-b border-border/50 px-4 py-3 lg:hidden">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center">
           <Image
             src="/logo.png"
             alt="Chakula Poa"
-            width={44}
-            height={44}
+            width={48}
+            height={48}
             priority
-            className="h-10 w-10 rounded-lg object-contain"
+            className="h-11 w-11 rounded-lg object-contain"
           />
-          <span className="text-xs font-medium text-muted-foreground">Admin</span>
         </div>
         <Sheet open={openMobile} onOpenChange={setOpenMobile}>
           <SheetTrigger asChild>

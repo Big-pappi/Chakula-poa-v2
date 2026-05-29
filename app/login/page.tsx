@@ -97,18 +97,14 @@ export default function LoginPage() {
       {/* Navigation Header */}
       <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto flex h-14 items-center justify-between px-4">
-          <Link href="/" className="flex items-center gap-2">
+          <Link href="/" className="flex items-center">
             <Image
               src="/logo.png"
               alt="Chakula Poa"
-              width={32}
-              height={32}
-              className="rounded-lg"
-              style={{ width: 32, height: 32 }}
+              width={44}
+              height={44}
+              className="rounded-lg h-10 w-10 object-contain"
             />
-            <span className="text-base font-bold text-foreground">
-              Chakula <span className="text-primary">Poa</span>
-            </span>
           </Link>
           <nav className="hidden items-center gap-4 md:flex">
             {navLinks.map((link) => (
@@ -135,22 +131,16 @@ export default function LoginPage() {
         {/* Left Panel - Form */}
         <div className="flex w-full flex-col justify-center px-4 py-8 lg:w-1/2 lg:px-8">
           <div className="mx-auto w-full max-w-md">
-            {/* Logo - Larger on form */}
-            <div className="flex items-center gap-3 mb-2">
+            {/* Logo - Centered and larger */}
+            <div className="flex flex-col items-center justify-center mb-4">
               <Image
                 src="/logo.png"
                 alt="Chakula Poa"
-                width={56}
-                height={56}
-                className="rounded-xl"
-                style={{ width: 56, height: 56 }}
+                width={80}
+                height={80}
+                className="rounded-xl h-20 w-20 object-contain"
               />
-              <div>
-                <span className="text-xl font-bold text-foreground">
-                  Chakula <span className="text-primary">Poa</span>
-                </span>
-                <p className="text-xs text-muted-foreground">Meal Subscription Platform</p>
-              </div>
+              <p className="mt-2 text-sm text-muted-foreground">Meal Subscription Platform</p>
             </div>
 
             {/* Form Card */}

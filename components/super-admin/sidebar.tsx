@@ -37,17 +37,14 @@ function NavContent({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <div className="flex h-full flex-col">
       {/* Logo */}
-      <div className="flex items-center gap-3 px-4 py-6 border-b border-border/50">
+      <div className="flex items-center justify-center px-4 py-6 border-b border-border/50">
         <Image
           src="/logo.png"
           alt="Chakula Poa"
-          width={48}
-          height={48}
-          className="rounded-xl"
+          width={64}
+          height={64}
+          className="rounded-xl object-contain"
         />
-        <span className="text-xl font-bold text-foreground">
-          Chakula <span className="text-primary">Poa</span>
-        </span>
       </div>
 
       {/* Admin Info */}
@@ -116,17 +113,15 @@ export function SuperAdminSidebar() {
     <>
       {/* Mobile Header */}
       <div className="fixed top-0 left-0 right-0 z-40 flex items-center justify-between bg-background/95 backdrop-blur-sm border-b border-border/50 px-4 py-3 lg:hidden">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center">
           <Image
             src="/logo.png"
             alt="Chakula Poa"
-            width={36}
-            height={36}
-            className="rounded-lg"
+            width={48}
+            height={48}
+            priority
+            className="h-11 w-11 rounded-lg object-contain"
           />
-          <span className="font-bold text-foreground">
-            Chakula <span className="text-primary">Poa</span>
-          </span>
         </div>
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild>

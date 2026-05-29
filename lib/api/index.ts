@@ -4,6 +4,7 @@ export { api, tokenManager, apiRequest } from "./client";
 export {
   auth,
   universities,
+  restaurants,
   plans,
   subscriptions,
   meals,
@@ -13,3 +14,12 @@ export {
   studentDashboard,
   superAdmin,
 } from "./endpoints";
+
+// Export the API functions from api.ts for backward compatibility
+export { 
+  adminAPI, 
+  superAdminAPI, 
+  plansAPI, 
+  restaurantsAPI,
+  authAPI 
+} from "./api";
