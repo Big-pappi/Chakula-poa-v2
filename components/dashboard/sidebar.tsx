@@ -77,13 +77,13 @@ function NavContent({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <div className="flex h-full flex-col">
       {/* Logo */}
-      <div className="flex items-center px-4 py-6 border-b border-border/50">
+      <div className="flex items-center justify-center px-4 py-6 border-b border-border/50">
         <Image
           src="/logo.png"
           alt="Chakula Poa"
-          width={52}
-          height={52}
-          className="h-12 w-12 rounded-xl object-contain"
+          width={64}
+          height={64}
+          className="h-16 w-16 rounded-xl object-contain"
         />
       </div>
 
@@ -166,10 +166,10 @@ export function DashboardSidebar() {
           <Image
             src="/logo.png"
             alt="Chakula Poa"
-            width={44}
-            height={44}
+            width={48}
+            height={48}
             priority
-            className="h-10 w-10 rounded-lg object-contain"
+            className="h-11 w-11 rounded-lg object-contain"
           />
         </div>
         <Sheet open={open} onOpenChange={setOpen}>

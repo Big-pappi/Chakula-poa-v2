@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/context/auth-context";
-import { superAdmin } from "@/lib/api/endpoints";
+import { superAdmin, plans } from "@/lib/api";
+import { superAdminAPI as backupAPI, restaurantsAPI } from "@/lib/api/api";
 import type { SubscriptionPlan, Restaurant } from "@/lib/types";
 import {
   PLAN_TIERS,
@@ -151,10 +152,10 @@ export default function SuperAdminPlansPage() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      // Fetch plans and restaurants
+      // Fetch plans and restaurants using the correct API
       const [plansRes, restaurantsRes] = await Promise.all([
-        superAdmin.getPlans ? superAdmin.getPlans() : { data: [] },
-        superAdmin.getRestaurants ? superAdmin.getRestaurants() : { data: [] },
+        plans.getAll(), // Get all plans
+        superAdmin.getRestaurants(), // Get all restaurants
       ]);
 
       if (plansRes.data) {
@@ -167,80 +168,9 @@ export default function SuperAdminPlansPage() {
       }
       setError(null);
     } catch (err) {
-      setError("Failed to load subscription plans");
-      // Set demo data for development
-      setPlans([
-        {
-          id: "1",
-          name: "Student Weekly",
-          tier: "student",
-          billing_cycle: "weekly",
-          is_student_only: true,
-          features: ["2 meals per day", "Student discount", "Flexible schedule"],
-          duration_type: "week",
-          duration_days: 7,
-          price: 14000,
-          meals_per_day: 2,
-          is_active: true,
-          created_at: new Date().toISOString(),
-          subscribers_count: 150,
-        },
-        {
-          id: "2",
-          name: "Normal Monthly",
-          tier: "normal",
-          billing_cycle: "monthly",
-          is_student_only: false,
-          features: ["2 meals per day", "Standard menu", "SMS notifications"],
-          duration_type: "month",
-          duration_days: 30,
-          price: 55000,
-          meals_per_day: 2,
-          is_active: true,
-          created_at: new Date().toISOString(),
-          subscribers_count: 320,
-        },
-        {
-          id: "3",
-          name: "Premium Monthly",
-          tier: "premium",
-          billing_cycle: "monthly",
-          is_student_only: false,
-          features: [
-            "3 meals per day",
-            "Premium menu access",
-            "Priority seating",
-            "Special requests",
-          ],
-          duration_type: "month",
-          duration_days: 30,
-          price: 85000,
-          meals_per_day: 3,
-          is_active: true,
-          created_at: new Date().toISOString(),
-          subscribers_count: 85,
-        },
-        {
-          id: "4",
-          name: "Semester Plan",
-          tier: "student",
-          billing_cycle: "semester",
-          is_student_only: true,
-          features: [
-            "2 meals per day",
-            "Semester discount",
-            "Campus-wide access",
-            "Exam period bonus",
-          ],
-          duration_type: "semester",
-          duration_days: 120,
-          price: 180000,
-          meals_per_day: 2,
-          is_active: true,
-          created_at: new Date().toISOString(),
-          subscribers_count: 450,
-        },
-      ] as SubscriptionPlan[]);
+      console.error("[v0] Error fetching plans:", err);
+      setError("Failed to load subscription plans. Check if backend is running.");
+      setPlans([]);
     } finally {
       setLoading(false);
     }
@@ -269,9 +199,10 @@ export default function SuperAdminPlansPage() {
         duration_type: formData.billing_cycle === "weekly" ? "week" : formData.billing_cycle === "semester" ? "semester" : "month",
       };
 
-      // API call to create plan
-      if (superAdmin.createPlan) {
-        await superAdmin.createPlan(planData);
+      // API call to create plan using superAdmin from endpoints.ts
+      const response = await superAdmin.createPlan(planData);
+      if (response.error) {
+        throw new Error(response.error);
       }
 
       // Re-fetch data instead of optimistic update to ensure persistence
@@ -279,8 +210,9 @@ export default function SuperAdminPlansPage() {
 
       setIsCreateDialogOpen(false);
       setFormData(defaultPlanData);
-    } catch (err) {
-      setError("Failed to create plan");
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to create plan";
+      setError(errorMessage);
     } finally {
       setSaving(false);
     }
@@ -300,8 +232,9 @@ export default function SuperAdminPlansPage() {
       };
 
       // API call to update plan
-      if (superAdmin.updatePlan) {
-        await superAdmin.updatePlan(selectedPlan.id, planData);
+      const response = await superAdmin.updatePlan(selectedPlan.id, planData);
+      if (response.error) {
+        throw new Error(response.error);
       }
 
       // Re-fetch data instead of optimistic update to ensure persistence
@@ -310,8 +243,9 @@ export default function SuperAdminPlansPage() {
       setIsEditDialogOpen(false);
       setSelectedPlan(null);
       setFormData(defaultPlanData);
-    } catch (err) {
-      setError("Failed to update plan");
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to update plan";
+      setError(errorMessage);
     } finally {
       setSaving(false);
     }
@@ -322,8 +256,9 @@ export default function SuperAdminPlansPage() {
     setSaving(true);
     try {
       // API call to delete plan
-      if (superAdmin.deletePlan) {
-        await superAdmin.deletePlan(selectedPlan.id);
+      const response = await superAdmin.deletePlan(selectedPlan.id);
+      if (response.error) {
+        throw new Error(response.error);
       }
 
       // Re-fetch data instead of optimistic update to ensure persistence
@@ -331,8 +266,9 @@ export default function SuperAdminPlansPage() {
 
       setIsDeleteDialogOpen(false);
       setSelectedPlan(null);
-    } catch (err) {
-      setError("Failed to delete plan");
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to delete plan";
+      setError(errorMessage);
     } finally {
       setSaving(false);
     }
@@ -341,14 +277,16 @@ export default function SuperAdminPlansPage() {
   const handleToggleActive = async (plan: SubscriptionPlan) => {
     try {
       // API call to toggle
-      if (superAdmin.updatePlan) {
-        await superAdmin.updatePlan(plan.id, { is_active: !plan.is_active });
+      const response = await superAdmin.updatePlan(plan.id, { is_active: !plan.is_active });
+      if (response.error) {
+        throw new Error(response.error);
       }
 
       // Re-fetch data to ensure persistence
       await fetchData();
-    } catch (err) {
-      setError("Failed to update plan status");
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to update plan status";
+      setError(errorMessage);
     }
   };
 

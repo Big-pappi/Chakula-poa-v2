@@ -64,33 +64,29 @@ export default function SubscriptionsPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch plans filtered by user's restaurant if available
-        const plansParams: Record<string, string> = {};
-        if (user?.restaurant_id) {
-          plansParams.restaurant_id = user.restaurant_id;
-        }
+        // Fetch plans filtered by user's restaurant
+        const restaurantId = user?.restaurant_id || undefined;
         
         const [plansRes, subRes] = await Promise.all([
-          plans.getAll(plansParams),
+          plans.getAll(restaurantId), // Pass restaurant_id to filter on backend
           subscriptions.getCurrent(),
         ]);
         
         if (plansRes.data && Array.isArray(plansRes.data)) {
           // Filter plans to only show those for user's restaurant
           let filteredPlans = plansRes.data;
-          if (user?.restaurant_id) {
+          if (restaurantId) {
             filteredPlans = plansRes.data.filter(
               (plan: SubscriptionPlan) => 
-                plan.restaurant_id === user.restaurant_id || 
-                plan.university_id === user.restaurant_id ||
-                !plan.restaurant_id // Include plans without restaurant (general plans)
+                plan.restaurant_id === restaurantId || 
+                !plan.restaurant_id // Include global plans without restaurant
             );
           }
           setPlansList(filteredPlans);
-          setError(filteredPlans.length === 0 ? "No subscription plans available for your location" : null);
+          setError(filteredPlans.length === 0 ? "No subscription plans available for your restaurant. Please contact your restaurant admin." : null);
         } else {
           setPlansList([]);
-          setError("No subscription plans available");
+          setError("No subscription plans available. Please contact your restaurant admin.");
         }
         
         // Check localStorage for test subscription first
