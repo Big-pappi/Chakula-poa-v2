@@ -20,9 +20,13 @@ class InitiatePaymentView(generics.CreateAPIView):
         
         return Response({
             'order_id': str(transaction.id),
+            'reference': transaction.payment_reference,
             'payment_reference': transaction.payment_reference,
+            'subscription_id': str(transaction.subscription_id) if transaction.subscription_id else None,
             'amount': str(transaction.amount),
-            'message': 'Payment initiated. Please complete payment on your mobile phone.'
+            'status': transaction.status,
+            'payment_status': transaction.status,
+            'message': 'Payment completed successfully (trial mode).'
         }, status=status.HTTP_201_CREATED)
 
 
@@ -82,26 +86,38 @@ class PaymentCallbackView(APIView):
 
 
 # Admin view for transactions
-from users.views import IsSuperAdmin
+from users.views import IsSuperAdmin, IsAdminUser
 
 
 class AdminTransactionListView(generics.ListAPIView):
-    """List all transactions (super admin only)."""
+    """
+    List transactions for admins. Restaurant admins only see payments for
+    their own restaurant; super admins see all payments.
+    """
     serializer_class = TransactionSerializer
-    permission_classes = [IsSuperAdmin]
+    permission_classes = [IsAdminUser]
     
     def get_queryset(self):
+        user = self.request.user
         queryset = Transaction.objects.all()
-        
-        university_id = self.request.query_params.get('university_id')
-        if university_id:
-            queryset = queryset.filter(user__university_id=university_id)
+
+        # Restaurant admins are scoped to their own restaurant's payments
+        if getattr(user, 'role', None) == 'admin' and getattr(user, 'restaurant_id', None):
+            queryset = queryset.filter(restaurant_id=user.restaurant_id)
+
+        # Optional explicit restaurant filter (super admin) - supports legacy param
+        restaurant_id = (
+            self.request.query_params.get('restaurant_id')
+            or self.request.query_params.get('university_id')
+        )
+        if restaurant_id:
+            queryset = queryset.filter(restaurant_id=restaurant_id)
         
         status_filter = self.request.query_params.get('status')
         if status_filter:
             queryset = queryset.filter(status=status_filter)
         
-        return queryset.select_related('user', 'subscription')
+        return queryset.select_related('user', 'subscription', 'restaurant')
 
 
 from .models import SystemSettings

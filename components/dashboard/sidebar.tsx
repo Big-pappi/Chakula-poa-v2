@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/context/auth-context";
 import { subscriptions } from "@/lib/api";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import {
   Home,
   Utensils,
@@ -77,18 +77,14 @@ function NavContent({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <div className="flex h-full flex-col">
       {/* Logo */}
-      <div className="flex items-center gap-3 px-4 py-6 border-b border-border/50">
+      <div className="flex items-center px-4 py-6 border-b border-border/50">
         <Image
           src="/logo.png"
           alt="Chakula Poa"
-          width={48}
-          height={48}
-          className="rounded-xl"
-          style={{ width: 48, height: 48 }}
+          width={52}
+          height={52}
+          className="h-12 w-12 rounded-xl object-contain"
         />
-        <span className="text-xl font-bold text-foreground">
-          Chakula <span className="text-primary">Poa</span>
-        </span>
       </div>
 
       {/* User Info */}
@@ -166,18 +162,15 @@ export function DashboardSidebar() {
     <>
       {/* Mobile Header */}
       <div className="fixed top-0 left-0 right-0 z-40 flex items-center justify-between bg-background/95 backdrop-blur-sm border-b border-border/50 px-4 py-3 lg:hidden">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center">
           <Image
             src="/logo.png"
             alt="Chakula Poa"
-            width={36}
-            height={36}
-            className="rounded-lg"
-            style={{ width: 36, height: 36 }}
+            width={44}
+            height={44}
+            priority
+            className="h-10 w-10 rounded-lg object-contain"
           />
-          <span className="font-bold text-foreground">
-            Chakula <span className="text-primary">Poa</span>
-          </span>
         </div>
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild>
@@ -186,6 +179,7 @@ export function DashboardSidebar() {
             </Button>
           </SheetTrigger>
           <SheetContent side="left" className="w-72 p-0">
+            <SheetTitle className="sr-only">Navigation menu</SheetTitle>
             <NavContent onNavigate={() => setOpen(false)} />
           </SheetContent>
         </Sheet>

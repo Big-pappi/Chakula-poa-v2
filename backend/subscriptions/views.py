@@ -4,6 +4,7 @@ Views for Subscription management.
 from rest_framework import generics, permissions, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from users.views import IsAdminUser, IsSuperAdmin
 from .models import SubscriptionPlan, Subscription, DietaryPlan
 from .serializers import (
     SubscriptionPlanSerializer, SubscriptionSerializer,
@@ -30,25 +31,72 @@ class DietaryPlanDetailView(generics.RetrieveAPIView):
 
 
 # Subscription Plan Views
-class SubscriptionPlanListView(generics.ListAPIView):
-    """List all active subscription plans."""
+class SubscriptionPlanListView(generics.ListCreateAPIView):
+    """
+    List subscription plans (public GET) and create plans (admin/super admin POST).
+
+    - GET is public so customers can browse plans for their restaurant.
+    - POST requires an admin or super admin. Admins are scoped to their own
+      restaurant; super admins may create plans for any restaurant.
+    """
     serializer_class = SubscriptionPlanSerializer
-    permission_classes = [permissions.AllowAny]
-    
+
+    def get_permissions(self):
+        if self.request.method == 'POST':
+            return [IsAdminUser()]
+        return [permissions.AllowAny()]
+
     def get_queryset(self):
-        queryset = SubscriptionPlan.objects.filter(is_active=True)
-        # Support both restaurant_id and legacy university_id
+        user = self.request.user
+        role = getattr(user, 'role', None) if user and user.is_authenticated else None
+
+        # Restaurant admins only ever see/manage their own restaurant's plans
+        if role == 'admin' and getattr(user, 'restaurant_id', None):
+            return SubscriptionPlan.objects.filter(restaurant_id=user.restaurant_id)
+
+        # Super admins / developers see every plan (active or not) for management
+        if role in ('super_admin', 'developer'):
+            queryset = SubscriptionPlan.objects.all()
+        else:
+            # Public / customers only see active plans
+            queryset = SubscriptionPlan.objects.filter(is_active=True)
+
+        # Support both restaurant_id and legacy university_id query params
         restaurant_id = self.request.query_params.get('restaurant_id') or self.request.query_params.get('university_id')
         if restaurant_id:
             queryset = queryset.filter(restaurant_id=restaurant_id)
         return queryset
 
+    def perform_create(self, serializer):
+        user = self.request.user
+        # Restaurant admins can only create plans for their own restaurant
+        if getattr(user, 'role', None) == 'admin' and getattr(user, 'restaurant_id', None):
+            serializer.save(restaurant=user.restaurant)
+        else:
+            serializer.save()
 
-class SubscriptionPlanDetailView(generics.RetrieveAPIView):
-    """Get subscription plan details."""
-    queryset = SubscriptionPlan.objects.filter(is_active=True)
+
+class SubscriptionPlanDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """
+    Retrieve a plan (public GET) and update/delete it (admin/super admin).
+    Admins are restricted to plans belonging to their own restaurant.
+    """
     serializer_class = SubscriptionPlanSerializer
-    permission_classes = [permissions.AllowAny]
+
+    def get_permissions(self):
+        if self.request.method in ('PUT', 'PATCH', 'DELETE'):
+            return [IsAdminUser()]
+        return [permissions.AllowAny()]
+
+    def get_queryset(self):
+        user = self.request.user
+        role = getattr(user, 'role', None) if user and user.is_authenticated else None
+
+        if role == 'admin' and getattr(user, 'restaurant_id', None):
+            return SubscriptionPlan.objects.filter(restaurant_id=user.restaurant_id)
+        if role in ('super_admin', 'developer'):
+            return SubscriptionPlan.objects.all()
+        return SubscriptionPlan.objects.filter(is_active=True)
 
 
 # User Subscription Views
@@ -159,9 +207,6 @@ class CancelSubscriptionView(APIView):
 
 
 # Admin views
-from users.views import IsAdminUser, IsSuperAdmin
-
-
 class AdminPlanListView(generics.ListCreateAPIView):
     """List and create subscription plans (admin only)."""
     serializer_class = SubscriptionPlanSerializer
